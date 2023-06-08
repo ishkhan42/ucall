@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: ["main"]
+    branches: ["Windows-Support"]
 
 env:
   BUILD_TYPE: Release
@@ -16,17 +16,6 @@ permissions:
   id-token: write
 
 jobs:
-
-  versioning:
-    name: Semantic Release
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        persist-credentials: false
-    - uses: actions/setup-node@v3
-    - run: cp .github/workflows/package.json . && npm install && npx semantic-release
-
 
   build_wheels:
     name: Build Wheels for ${{ matrix.os }}
@@ -62,56 +51,3 @@ jobs:
         with:
           path: ./wheelhouse/*.whl
   
-  
-  publish_wheels:
-    name: Publish Wheels to PyPi
-    runs-on: ubuntu-20.04
-    needs: build_wheels
-    
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v3.0.2
-        with:
-          path: ./dist/
-
-      - name: Publish to PyPi
-        uses: pypa/gh-action-pypi-publish@v1.6.4
-        with:
-          user: __token__
-          password: ${{ secrets.TWINE_API }}
-          packages_dir: ./dist/artifact
-          verbose: true
-          print_hash: true
-
-
-  deploy_docs:
-    name: Deploy Docs
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-22.04
-    if: ${{ always() }}
-    needs: publish_wheels
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: 'main'   
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v2
-      - name: Install dependencies
-        run: sudo apt update && sudo apt install -y doxygen graphviz dia git && pip install sphinx breathe furo m2r2 sphinxcontrib-googleanalytics==0.2.dev20220708 sphinxcontrib-jquery
-      - name: Install UCall from PyPi
-        run: pip install ucall
-      - name: Build documentation
-        run: cd docs && doxygen conf.dox && make html
-      - name: Copy assets
-        run: cp -r assets build/docs/html/
-      - name: Upload artifacts
-        uses: actions/upload-pages-artifact@v1
-        with:
-          # Upload entire repository
-          path: "./build/docs/html/"
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v1
